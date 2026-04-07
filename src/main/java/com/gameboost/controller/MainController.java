@@ -12,6 +12,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
+import javafx.scene.control.ButtonBar;
 
 import java.net.URL;
 import java.util.*;
@@ -49,6 +50,7 @@ public class MainController implements Initializable {
     private List<OptimizationEntry> optimizations;
     private String activeFilter = "ALL";
     private Timeline statsTimer;
+    private static final int FREE_VISIBLE_LIMIT = 10;
 
     @Override
     public void initialize(URL url, ResourceBundle rb) {
@@ -219,16 +221,84 @@ public class MainController implements Initializable {
     private void buildOptimizationCards(String filter) {
         Platform.runLater(() -> {
             optimizationList.getChildren().clear();
-            optimizations.stream()
-                .filter(o -> filter.equals("ALL") || o.getCategoryLabel().equals(filter))
-                .forEach(o -> optimizationList.getChildren().add(buildCard(o)));
+            List<OptimizationEntry> filtered = optimizations.stream()
+                    .filter(o -> filter.equals("ALL") || o.getCategoryLabel().equals(filter))
+                    .toList();
+
+            int freeCount = 0;
+            for (OptimizationEntry o : filtered) {
+                boolean isLocked = !license.isPro && freeCount >= FREE_VISIBLE_LIMIT;
+                optimizationList.getChildren().add(buildCard(o, isLocked));
+                freeCount++;
+            }
+
+            // Add upgrade banner after locked cards if free user
+            if (!license.isPro && filtered.size() > FREE_VISIBLE_LIMIT) {
+                optimizationList.getChildren().add(buildUpgradeBanner(filtered.size() - FREE_VISIBLE_LIMIT));
+            }
         });
     }
 
-    private HBox buildCard(OptimizationEntry opt) {
+    private HBox buildUpgradeBanner(int lockedCount) {
+        HBox banner = new HBox(12);
+        banner.setAlignment(Pos.CENTER);
+        banner.setStyle(
+                "-fx-background-color:linear-gradient(to right, #1a1a2e, #16213e);" +
+                        "-fx-border-color:#f59e0b; -fx-border-width:1px; -fx-border-radius:8px;" +
+                        "-fx-background-radius:8px; -fx-padding:16px;"
+        );
+
+        Label icon  = new Label("🔒");
+        icon.setStyle("-fx-font-size:20px;");
+        VBox text = new VBox(4);
+        Label title = new Label(lockedCount + " more optimizations locked");
+        title.setStyle("-fx-text-fill:#f59e0b; -fx-font-weight:bold; -fx-font-size:13px;");
+        Label sub = new Label("Upgrade to Pro to unlock all tweaks including GPU, CPU & advanced registry optimizations.");
+        sub.setStyle("-fx-text-fill:#9ca3af; -fx-font-size:11px;");
+        sub.setWrapText(true);
+        text.getChildren().addAll(title, sub);
+        HBox.setHgrow(text, Priority.ALWAYS);
+
+        Button upgradeBtn = new Button("Upgrade to Pro →");
+        upgradeBtn.setStyle(
+                "-fx-background-color:#f59e0b; -fx-text-fill:#000; -fx-font-weight:bold;" +
+                        "-fx-background-radius:6px; -fx-padding:8 16;"
+        );
+        upgradeBtn.setOnAction(e -> showPanel(licensePanel, navLicense));
+        banner.getChildren().addAll(icon, text, upgradeBtn);
+        return banner;
+    }
+
+    private HBox buildCard(OptimizationEntry opt, boolean isLocked) {
         HBox card = new HBox(14);
         card.getStyleClass().add("opt-card");
         card.setAlignment(Pos.CENTER_LEFT);
+
+        if (isLocked) {
+            // Blurred/locked card — show greyed out version with lock icon
+            card.setStyle("-fx-opacity:0.45;");
+            card.setDisable(true);
+
+            Label lockIcon = new Label("🔒");
+            lockIcon.setStyle("-fx-font-size:14px; -fx-padding:0 4 0 0;");
+
+            Label catPill = new Label(opt.getCategoryLabel());
+            catPill.getStyleClass().addAll("cat-pill", "cat-" + opt.getCategoryLabel().toLowerCase());
+
+            VBox text = new VBox(4);
+            HBox.setHgrow(text, Priority.ALWAYS);
+            Label title = new Label(opt.getTitle());
+            title.getStyleClass().add("opt-title");
+            Label desc = new Label("Unlock Pro to use this optimization.");
+            desc.getStyleClass().add("opt-desc");
+            text.getChildren().addAll(title, desc);
+
+            Label risk = new Label(opt.getRiskLabel());
+            risk.getStyleClass().addAll("risk-pill", "risk-" + opt.getRiskLevel().name().toLowerCase());
+
+            card.getChildren().addAll(lockIcon, catPill, text, risk);
+            return card;
+        }
 
         // Left: custom toggle
         ToggleButton toggle = new ToggleButton();
@@ -302,6 +372,93 @@ public class MainController implements Initializable {
     private void onGoToOptimize() { showPanel(optimizePanel, navOptimize); }
 
     @FXML
+    private void onSmartScan() {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Smart Scan");
+        dialog.setHeaderText("Choose Optimization Mode");
+        dialog.getDialogPane().getStylesheets().add(
+                getClass().getResource("/com/gameboost/css/dark-theme.css").toExternalForm());
+
+        ButtonType safeType     = new ButtonType("🛡  Safe Mode",  ButtonBar.ButtonData.LEFT);
+        ButtonType balancedType = new ButtonType("⚡  Balanced",   ButtonBar.ButtonData.LEFT);
+        ButtonType ultraType    = new ButtonType("🔥  Ultra Mode", ButtonBar.ButtonData.LEFT);
+        ButtonType cancelType   = new ButtonType("Cancel",         ButtonBar.ButtonData.CANCEL_CLOSE);
+        dialog.getDialogPane().getButtonTypes().addAll(safeType, balancedType, ultraType, cancelType);
+
+        Label descLabel = new Label(
+                "🛡 Safe  — only zero-risk tweaks. No restarts, no registry edits.\n\n" +
+                        "⚡ Balanced  — safe tweaks + moderate ones tuned to your hardware.\n\n" +
+                        "🔥 Ultra  — everything enabled, including risky tweaks for max FPS.\n" +
+                        "             Not recommended on laptops or weak cooling setups."
+        );
+        descLabel.setWrapText(true);
+        descLabel.setStyle("-fx-text-fill:#9ca3af; -fx-font-size:12px;");
+        descLabel.setMaxWidth(420);
+
+        dialog.getDialogPane().setContent(new VBox(12, descLabel));
+        dialog.setResultConverter(btn -> {
+            if (btn == safeType)     return "SAFE";
+            if (btn == balancedType) return "BALANCED";
+            if (btn == ultraType)    return "ULTRA";
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(mode -> {
+            applySmartMode(mode);
+            // Switch to Optimize tab so user sees what got selected
+            showPanel(optimizePanel, navOptimize);
+            buildOptimizationCards(activeFilter);
+            updateSelectedCount();
+
+            String summary = switch (mode) {
+                case "SAFE"     -> "Safe Mode applied — " + optimizations.stream().filter(OptimizationEntry::isEnabled).count() + " safe tweaks selected.";
+                case "BALANCED" -> "Balanced Mode applied — tweaks chosen based on your hardware profile.";
+                case "ULTRA"    -> "Ultra Mode applied — all optimizations enabled. Review before running!";
+                default -> "";
+            };
+            showAlert("Smart Scan Complete", summary);
+        });
+    }
+
+    private void applySmartMode(String mode) {
+        // First disable everything
+        optimizations.forEach(o -> o.setEnabled(false));
+
+        for (OptimizationEntry o : optimizations) {
+            switch (mode) {
+                case "SAFE" -> {
+                    // Only SAFE risk level, no restart required
+                    if (o.getRiskLevel() == OptimizationEntry.RiskLevel.SAFE) {
+                        o.setEnabled(true);
+                    }
+                }
+                case "BALANCED" -> {
+                    // Safe always in
+                    if (o.getRiskLevel() == OptimizationEntry.RiskLevel.SAFE) {
+                        o.setEnabled(true);
+                    }
+                    // Moderate only if relevant to this hardware
+                    if (o.getRiskLevel() == OptimizationEntry.RiskLevel.MODERATE) {
+                        boolean relevant = switch (o.getId()) {
+                            case "disable_superfetch"   -> profile != null && profile.lowRam;
+                            case "disable_hw_accel_gpu" -> profile != null && (profile.hasNvidiaGpu || profile.hasAmdGpu);
+                            case "network_latency"      -> true; // always useful
+                            case "disable_telemetry"    -> true;
+                            default -> false;
+                        };
+                        o.setEnabled(relevant);
+                    }
+                    // RESTART_REQUIRED and RISKY stay off in Balanced
+                }
+                case "ULTRA" -> {
+                    // Everything on
+                    o.setEnabled(true);
+                }
+            }
+        }
+    }
+
+    @FXML
     private void onOptimizeNow() {
         if (!license.canOptimize()) { showUpgradeDialog(); return; }
 
@@ -338,27 +495,77 @@ public class MainController implements Initializable {
     private String execute(OptimizationEntry opt) {
         try {
             return switch (opt.getId()) {
-                case "kill_processes"      -> optService.runKillProcesses();
-                case "clear_ram"           -> optService.runClearRam();
-                case "disable_superfetch"  -> optService.runDisableSuperFetch();
-                case "power_plan"          -> optService.runSetHighPerformancePower();
-                case "disable_core_parking"-> optService.runDisableCoreParking();
-                case "high_priority_games" -> optService.runHighPriorityGames();
-                case "disable_hw_accel_gpu"-> optService.runDisableHWAccelGPUSched();
-                case "gpu_performance"     -> optService.runGpuPerformance(profile);
-                case "disable_fullscreen_opt"-> optService.runDisableFullscreenOpt();
-                case "network_latency"     -> optService.runNetworkLatency();
-                case "network_throttling"  -> optService.runDisableNetworkThrottling();
-                case "dns_cache"           -> optService.runFlushDns();
-                case "clear_temp"          -> optService.runClearTemp();
-                case "disable_prefetch_writes"-> optService.runDisablePrefetchWrites();
-                case "disable_gamebar"     -> optService.runDisableGameBar();
-                case "disable_telemetry"   -> optService.runDisableTelemetry();
-                case "disable_notifications"-> optService.runDisableNotifications();
-                case "visual_effects"      -> optService.runReduceVisualEffects();
+                case "kill_processes"           -> optService.runKillProcesses();
+                case "clear_ram"               -> optService.runClearRam();
+                case "disable_superfetch"      -> optService.runDisableSuperFetch();
+                case "disable_paging_exec"     -> optService.runDisablePagingExec();
+                case "disable_delivery_opt"    -> optService.runDisableDeliveryOpt();
+                case "power_plan"              -> optService.runSetHighPerformancePower();
+                case "ultimate_power_plan"     -> optService.runUltimatePowerPlan();
+                case "disable_core_parking"    -> optService.runDisableCoreParking();
+                case "high_priority_games"     -> optService.runHighPriorityGames();
+                case "mmcss_games_priority"    -> optService.runMmcssGamesPriority();
+                case "disable_hw_accel_gpu"    -> optService.runDisableHWAccelGPUSched();
+                case "disable_spectre_meltdown"-> optService.runDisableSpectreMetldown();
+                case "gpu_performance"         -> optService.runGpuPerformance(profile);
+                case "disable_fullscreen_opt"  -> optService.runDisableFullscreenOpt();
+                case "disable_mpo"             -> optService.runDisableMpo();
+                case "nvidia_shader_cache"     -> optService.runNvidiaShaderCache();
+                case "network_latency"         -> optService.runNetworkLatency();
+                case "network_throttling"      -> optService.runDisableNetworkThrottling();
+                case "dns_cache"               -> optService.runFlushDns();
+                case "disable_auto_tuning"     -> optService.runDisableAutoTuning();
+                case "disable_windows_update_bandwidth" -> optService.runDisableUpdateBandwidth();
+                case "clear_temp"              -> optService.runClearTemp();
+                case "disable_prefetch_writes" -> optService.runDisablePrefetchWrites();
+                case "disable_last_access"     -> optService.runDisableLastAccess();
+                case "disable_hibernate"       -> optService.runDisableHibernate();
+                case "disable_gamebar"         -> optService.runDisableGameBar();
+                case "disable_telemetry"       -> optService.runDisableTelemetry();
+                case "disable_notifications"   -> optService.runDisableNotifications();
+                case "visual_effects"          -> optService.runReduceVisualEffects();
+                case "disable_mouse_accel"     -> optService.runDisableMouseAccel();
+                case "enable_game_mode"        -> optService.runEnableGameMode();
+                case "disable_search_indexing" -> optService.runDisableSearchIndexing();
+                case "disable_audio_enhancements" -> optService.runDisableAudioEnhancements();
                 default -> "SKIPPED: Unknown ID";
             };
         } catch (Exception e) { return "FAILED: " + e.getMessage(); }
+    }
+
+    private void runRevert(OptimizationEntry opt) {
+        String result = switch (opt.getId()) {
+            case "power_plan"              -> optService.revertPowerPlan();
+            case "ultimate_power_plan"     -> optService.revertUltimatePowerPlan();
+            case "disable_superfetch"      -> optService.revertSuperFetch();
+            case "disable_paging_exec"     -> optService.revertDisablePagingExec();
+            case "disable_delivery_opt"    -> optService.revertDeliveryOpt();
+            case "disable_core_parking"    -> optService.revertCoreParking();
+            case "mmcss_games_priority"    -> optService.revertMmcssGamesPriority();
+            case "disable_hw_accel_gpu"    -> optService.revertHWAccelGPUSched();
+            case "disable_spectre_meltdown"-> optService.revertSpectreMeltdown();
+            case "gpu_performance"         -> optService.revertGpuPerformance();
+            case "disable_fullscreen_opt"  -> optService.revertFullscreenOpt();
+            case "disable_mpo"             -> optService.revertMpo();
+            case "network_latency"         -> optService.revertNetworkLatency();
+            case "network_throttling"      -> optService.revertNetworkThrottling();
+            case "disable_auto_tuning"     -> optService.revertAutoTuning();
+            case "disable_windows_update_bandwidth" -> optService.revertUpdateBandwidth();
+            case "disable_prefetch_writes" -> optService.revertPrefetchWrites();
+            case "disable_last_access"     -> optService.revertLastAccess();
+            case "disable_hibernate"       -> optService.revertHibernate();
+            case "disable_gamebar"         -> optService.revertGameBar();
+            case "disable_telemetry"       -> optService.revertTelemetry();
+            case "disable_notifications"   -> optService.revertNotifications();
+            case "visual_effects"          -> optService.revertVisualEffects();
+            case "disable_mouse_accel"     -> optService.revertMouseAccel();
+            case "enable_game_mode"        -> optService.revertGameMode();
+            case "disable_search_indexing" -> optService.revertSearchIndexing();
+            case "disable_audio_enhancements" -> optService.revertAudioEnhancements();
+            default -> "No revert available.";
+        };
+        storage.appendHistory(new HistoryEntry(opt.getId(), opt.getTitle() + " [REVERTED]", result));
+        opt.setApplied(false);
     }
 
     private void revealUndo(OptimizationEntry opt) {
@@ -374,26 +581,6 @@ public class MainController implements Initializable {
             });
     }
 
-    private void runRevert(OptimizationEntry opt) {
-        String result = switch (opt.getId()) {
-            case "power_plan"            -> optService.revertPowerPlan();
-            case "disable_superfetch"    -> optService.revertSuperFetch();
-            case "disable_core_parking"  -> optService.revertCoreParking();
-            case "disable_hw_accel_gpu"  -> optService.revertHWAccelGPUSched();
-            case "gpu_performance"       -> optService.revertGpuPerformance();
-            case "disable_fullscreen_opt"-> optService.revertFullscreenOpt();
-            case "network_latency"       -> optService.revertNetworkLatency();
-            case "network_throttling"    -> optService.revertNetworkThrottling();
-            case "disable_prefetch_writes"-> optService.revertPrefetchWrites();
-            case "disable_gamebar"       -> optService.revertGameBar();
-            case "disable_telemetry"     -> optService.revertTelemetry();
-            case "disable_notifications" -> optService.revertNotifications();
-            case "visual_effects"        -> optService.revertVisualEffects();
-            default -> "No revert available.";
-        };
-        storage.appendHistory(new HistoryEntry(opt.getId(), opt.getTitle() + " [REVERTED]", result));
-        opt.setApplied(false);
-    }
 
     // =========================================================================
     //  HISTORY
