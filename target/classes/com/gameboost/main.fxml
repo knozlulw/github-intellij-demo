@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+
+<HBox xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.gameboost.controller.MainController"
+      styleClass="root-container" prefWidth="1120" prefHeight="740">
+
+    <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+    <VBox styleClass="sidebar" prefWidth="210">
+        <padding><Insets top="28" bottom="20" left="0" right="0"/></padding>
+
+        <VBox styleClass="logo-area" alignment="CENTER">
+            <padding><Insets bottom="36" left="24" right="24"/></padding>
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label text="⚡" styleClass="logo-bolt"/>
+                <VBox spacing="0">
+                    <Label text="GameBoost" styleClass="logo-name"/>
+                    <Label text="PC OPTIMIZER" styleClass="logo-tag"/>
+                </VBox>
+            </HBox>
+        </VBox>
+
+        <Label text="MENU" styleClass="nav-section-label"/>
+        <Button fx:id="navHome"     text="  Dashboard"    styleClass="nav-btn,nav-active" maxWidth="Infinity"/>
+        <Button fx:id="navOptimize" text="  Optimize"     styleClass="nav-btn"            maxWidth="Infinity"/>
+        <Button fx:id="navHistory"  text="  History"      styleClass="nav-btn"            maxWidth="Infinity"/>
+
+        <Label text="ACCOUNT" styleClass="nav-section-label"/>
+        <Button fx:id="navLicense"  text="  License"      styleClass="nav-btn"            maxWidth="Infinity"/>
+
+        <Region VBox.vgrow="ALWAYS"/>
+
+        <VBox styleClass="sidebar-footer">
+            <padding><Insets top="16" left="16" right="16" bottom="8"/></padding>
+            <Label text="STATUS" styleClass="nav-section-label" style="-fx-padding:0 0 6 0;"/>
+            <Label fx:id="licenseStatusLabel" text="FREE  ·  15 left" styleClass="status-chip"/>
+        </VBox>
+    </VBox>
+
+    <!-- ═══════════════════ CONTENT ═══════════════════ -->
+    <StackPane HBox.hgrow="ALWAYS" styleClass="content-bg">
+
+        <!-- ── DASHBOARD ── -->
+        <VBox fx:id="homePanel" styleClass="panel" visible="true">
+            <padding><Insets top="36" right="36" bottom="36" left="36"/></padding>
+            <spacing>24</spacing>
+
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <VBox spacing="3">
+                    <Label text="Dashboard" styleClass="page-title"/>
+                    <Label text="Live system overview and hardware profile" styleClass="page-sub"/>
+                </VBox>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button text="Go to Optimize →" styleClass="btn-ghost" onAction="#onGoToOptimize"/>
+            </HBox>
+
+            <!-- Stats row -->
+            <HBox spacing="16">
+                <!-- CPU -->
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Label text="CPU" styleClass="stat-icon-cpu"/>
+                        <VBox HBox.hgrow="ALWAYS" spacing="2">
+                            <HBox>
+                                <Label text="CPU USAGE" styleClass="stat-label"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="cpuLabel" text="—" styleClass="stat-value"/>
+                            </HBox>
+                            <ProgressBar fx:id="cpuBar" progress="0" maxWidth="Infinity" styleClass="stat-bar"/>
+                        </VBox>
+                    </HBox>
+                </VBox>
+                <!-- RAM -->
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Label text="RAM" styleClass="stat-icon-ram"/>
+                        <VBox HBox.hgrow="ALWAYS" spacing="2">
+                            <HBox>
+                                <Label text="MEMORY" styleClass="stat-label"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="ramLabel" text="—" styleClass="stat-value"/>
+                            </HBox>
+                            <ProgressBar fx:id="ramBar" progress="0" maxWidth="Infinity" styleClass="stat-bar"/>
+                        </VBox>
+                    </HBox>
+                </VBox>
+                <!-- Disk -->
+                <VBox styleClass="stat-card" HBox.hgrow="ALWAYS">
+                    <HBox alignment="CENTER_LEFT" spacing="10">
+                        <Label text="SSD" styleClass="stat-icon-disk"/>
+                        <VBox HBox.hgrow="ALWAYS" spacing="2">
+                            <HBox>
+                                <Label text="DISK C:" styleClass="stat-label"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label fx:id="diskLabel" text="—" styleClass="stat-value"/>
+                            </HBox>
+                            <ProgressBar fx:id="diskBar" progress="0" maxWidth="Infinity" styleClass="stat-bar"/>
+                        </VBox>
+                    </HBox>
+                </VBox>
+                <!-- Temp -->
+                <VBox styleClass="stat-card stat-card-sm" alignment="CENTER">
+                    <Label text="TEMP" styleClass="stat-label"/>
+                    <Label fx:id="tempLabel" text="—" styleClass="stat-temp"/>
+                </VBox>
+            </HBox>
+
+            <!-- PC Profile -->
+            <VBox styleClass="profile-card" spacing="12">
+                <HBox alignment="CENTER_LEFT">
+                    <Label text="Hardware Profile" styleClass="card-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="recommendedLabel" text="Scanning..." styleClass="recommended-badge"/>
+                </HBox>
+                <Label fx:id="pcProfileLabel" text="Scanning hardware..." styleClass="profile-specs" wrapText="true"/>
+                <Label fx:id="pcSummaryLabel"  text="" styleClass="profile-hints" wrapText="true"/>
+            </VBox>
+        </VBox>
+
+        <!-- ── OPTIMIZE ── -->
+        <VBox fx:id="optimizePanel" styleClass="panel" visible="false">
+            <padding><Insets top="36" right="36" bottom="0" left="36"/></padding>
+            <spacing>20</spacing>
+
+            <HBox alignment="CENTER_LEFT" spacing="14">
+                <VBox spacing="3">
+                    <Label text="Optimizations" styleClass="page-title"/>
+                    <Label text="Select and apply performance tweaks" styleClass="page-sub"/>
+                </VBox>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="selectedCountLabel" text="0 selected" styleClass="count-label"/>
+                <Button fx:id="optimizeNowBtn" text="Run Optimizations"
+                        styleClass="btn-primary" onAction="#onOptimizeNow"/>
+            </HBox>
+
+            <!-- Category filters -->
+            <HBox styleClass="filter-bar" spacing="6" alignment="CENTER_LEFT">
+                <Label fx:id="filterAll"     text="All"      styleClass="filter-chip,filter-active"/>
+                <Label fx:id="filterMemory"  text="Memory"   styleClass="filter-chip"/>
+                <Label fx:id="filterCpu"     text="CPU"      styleClass="filter-chip"/>
+                <Label fx:id="filterGpu"     text="GPU"      styleClass="filter-chip"/>
+                <Label fx:id="filterNetwork" text="Network"  styleClass="filter-chip"/>
+                <Label fx:id="filterStorage" text="Storage"  styleClass="filter-chip"/>
+                <Label fx:id="filterSystem"  text="System"   styleClass="filter-chip"/>
+                <Label fx:id="filterPrivacy" text="Privacy"  styleClass="filter-chip"/>
+            </HBox>
+
+            <!-- List -->
+            <ScrollPane fitToWidth="true" styleClass="clean-scroll" VBox.vgrow="ALWAYS">
+                <VBox fx:id="optimizationList" spacing="8" styleClass="opt-list">
+                    <padding><Insets top="2" right="2" bottom="20" left="2"/></padding>
+                </VBox>
+            </ScrollPane>
+        </VBox>
+
+        <!-- ── HISTORY ── -->
+        <VBox fx:id="historyPanel" styleClass="panel" visible="false">
+            <padding><Insets top="36" right="36" bottom="36" left="36"/></padding>
+            <spacing>20</spacing>
+            <Label text="Optimization History" styleClass="page-title"/>
+            <Label text="All applied optimizations, most recent first." styleClass="page-sub"/>
+            <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="clean-scroll">
+                <VBox fx:id="historyList" spacing="6">
+                    <padding><Insets top="2" right="2" bottom="20" left="2"/></padding>
+                </VBox>
+            </ScrollPane>
+        </VBox>
+
+        <!-- ── LICENSE ── -->
+        <VBox fx:id="licensePanel" styleClass="panel" visible="false">
+            <padding><Insets top="36" right="36" bottom="36" left="36"/></padding>
+            <spacing>24</spacing>
+            <Label text="License" styleClass="page-title"/>
+
+            <VBox styleClass="license-card" spacing="14">
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label text="Current Plan" styleClass="card-title"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="licenseStatusLabel2" styleClass="status-chip" text="FREE"/>
+                </HBox>
+                <Label fx:id="usageLabel" text="0 / 15 free optimizations used." styleClass="page-sub"/>
+                <Label text="Upgrade to Pro for unlimited optimizations and all future features."
+                       styleClass="page-sub" wrapText="true"/>
+            </VBox>
+
+            <VBox styleClass="license-card" spacing="16">
+                <Label text="Activate Pro License" styleClass="card-title"/>
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <TextField fx:id="licenseKeyField" promptText="GB-XXXX-XXXX-XXXX"
+                               styleClass="key-input" HBox.hgrow="ALWAYS"/>
+                    <Button text="Activate" styleClass="btn-primary" onAction="#onActivateLicense"/>
+                </HBox>
+                <Label fx:id="licenseResultLabel" text="" styleClass="license-msg"/>
+            </VBox>
+        </VBox>
+
+    </StackPane>
+</HBox>
